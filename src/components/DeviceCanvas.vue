@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { chartDemoState, BREAKPOINTS } from '@/state/chartDemoState'
 import ChartStage from './ChartStage.vue'
 import ParamHint from '@/components/ParamHint.vue'
+import { calcBarLayoutStats } from '@/composables/calcBarLayoutStats'
 
 const props = defineProps<{
   effectiveWidth: number
@@ -11,6 +13,30 @@ const props = defineProps<{
 function setBreakpoint(w: number) {
   chartDemoState.canvasWidth = Math.min(w, props.maxCanvasWidth)
 }
+
+const layoutStats = computed(() =>
+  (() => {
+    const allStats = calcBarLayoutStats(props.effectiveWidth)
+    if (
+      !chartDemoState.useBarMinWidth ||
+      chartDemoState.categoryCount <= 1 ||
+      allStats.barWidthPx >= chartDemoState.barMinWidth
+    ) {
+      return allStats
+    }
+
+    // 小屏策略下：只渲染一段类目窗口，因此柱宽应按“窗口类目数”重新计算。
+    const total = Math.max(1, chartDemoState.categoryCount)
+    const minWidth = chartDemoState.barMinWidth
+
+    for (let c = total; c >= 1; c--) {
+      const s = calcBarLayoutStats(props.effectiveWidth, { categoryCount: c })
+      if (s.barWidthPx >= minWidth) return s
+    }
+
+    return calcBarLayoutStats(props.effectiveWidth, { categoryCount: 1 })
+  })(),
+)
 </script>
 
 <template>
@@ -86,6 +112,20 @@ function setBreakpoint(w: number) {
         >
           {{ w }}
         </button>
+      </div>
+      <div class="layout-stats" aria-live="polite">
+        <div class="layout-row">
+          <span class="layout-label">当前柱宽</span>
+          <span class="layout-value">{{ layoutStats.barWidthPx.toFixed(1) }}px</span>
+        </div>
+        <div v-if="layoutStats.groupCount > 1" class="layout-row">
+          <span class="layout-label">当前柱间距（组内）</span>
+          <span class="layout-value">{{ layoutStats.barGapPx.toFixed(1) }}px</span>
+        </div>
+        <div class="layout-row">
+          <span class="layout-label">当前类目间距</span>
+          <span class="layout-value">{{ layoutStats.barCategoryGapPx.toFixed(1) }}px</span>
+        </div>
       </div>
     </header>
 
@@ -217,6 +257,36 @@ function setBreakpoint(w: number) {
 .bp:hover {
   border-color: var(--demo-accent);
   color: var(--demo-accent);
+}
+
+.layout-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-self: flex-start; /* 不要在 flex 交叉轴上拉伸 */
+  flex: 0 0 auto;
+  width: max-content; /* 避免被撑满导致视觉拉伸 */
+  padding: 0.5rem 0.65rem; /* 保留内部留白，便于读数 */
+  border: none;
+  border-radius: 0;
+  background: transparent; /* 去掉卡片背景 */
+}
+
+.layout-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.layout-label {
+  color: var(--demo-muted);
+}
+
+.layout-value {
+  color: var(--demo-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .device-frame {

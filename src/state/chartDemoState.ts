@@ -8,6 +8,8 @@ export interface ChartDemoState {
   categoryCount: number
   /** 同一类目下有几组柱子（分组柱状图） */
   groupCount: number
+  /** 小屏柱宽过窄时的展示策略：拖拽连续（A）/按页翻页（B） */
+  smallScreenStrategy: 'drag' | 'page'
   barWidthMode: 'pixel' | 'percent'
   barWidthPixel: number
   barWidthPercent: number
@@ -90,15 +92,16 @@ export const chartDemoState = reactive<ChartDemoState>({
   chartHeight: 380,
   categoryCount: 12,
   groupCount: 1,
+  smallScreenStrategy: 'page',
   barWidthMode: 'percent',
   barWidthPixel: 20,
-  barWidthPercent: 50,
+  barWidthPercent: 40,
   useBarMaxWidth: false,
   barMaxWidth: 40,
   useBarMinWidth: false,
   barMinWidth: 4,
-  barCategoryGap: '20%',
-  barGap: '30%',
+  barCategoryGap: '0%',
+  barGap: '25%',
   ...DEFAULT_GRID,
   colorPalette: [...DEFAULT_COLOR_PALETTE],
   panelCollapsed: false,

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移动端柱状图自适应预览器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 2560px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1f66ff, #3b82f6);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fafbfc;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .control-group input, .control-group select, .control-group textarea, .control-group button {
+            padding: 10px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        
+        .control-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .control-group input:focus, .control-group select:focus, .control-group textarea:focus {
+            outline: none;
+            border-color: #1f66ff;
+        }
+        
+        .control-group button {
+            background-color: #1f66ff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .control-group button:hover {
+            background-color: #3b82f6;
+        }
+        
+        .control-group button.secondary {
+             background-color: #6b7280;
+        }
+        .control-group button.secondary:hover {
+             background-color: #4b5563;
+        }
+
+        #color-editor-container .control-group {
+            grid-column: span 2;
+        }
+
+        #color-input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #color-input-area textarea {
+            flex-grow: 1;
+        }
+
+        #color-chips-area {
+            display: none; /* Initially hidden */
+            align-items: center;
+            gap: 10px;
+        }
+
+        #color-chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex-grow: 1;
+            padding: 8px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+        }
+
+        .color-chip {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #e5e7eb;
+            transition: transform 0.2s;
+        }
+        .color-chip:hover {
+            transform: scale(1.1);
+        }
+
+        #color-picker {
+            visibility: hidden;
+            width: 0;
+            height: 0;
+            padding: 0;
+            border: none;
+        }
+
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .device-preview {
+            padding: 24px;
+            background: #f8fafc;
+        }
+
+        .device-frame {
+            margin: 0 auto;
+            border: 8px solid #d1d5db;
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .device-frame::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: #9ca3af;
+            border-radius: 2px;
+        }
+
+        .chart-container {
+            padding: 24px;
+            position: relative;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1f2937;
+            text-align: center;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            height: 200px;
+        }
+
+        .y-axis-container {
+            width: 35px;
+            height: 100%;
+            position: relative;
+            border-right: 1px solid #e5e7eb;
+        }
+
+        .y-axis-labels {
+            position: absolute;
+            right: 5px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #6b7280;
+            padding: 0;
+        }
+        .y-axis-labels span {
+            height: 0;
+            display: flex;
+            align-items: center;
+            transform: translateY(50%);
+        }
+
+        .y-axis-labels span:last-child {
+            transform: translateY(-50%);
+        }
+
+        .x-axis-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .bars-container {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            padding: 0 5px;
+            position: relative;
+        }
+
+        .area-overlay {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: rgba(31, 102, 255, 0.1);
+            border: 1px dashed rgba(31, 102, 255, 0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .area-overlay.visible {
+            opacity: 1;
+        }
+
+        .bar-group {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .bar {
+            border-radius: 0 0 0 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .bar.stacked-container {
+            border-radius: 0;
+        }
+        
+        .stacked-bar-segment {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: absolute;
+            width: 100%;
+            border-radius: 0;
+        }
+        
+        .stacked-bar-segment:not(:first-child) {
+            border-top: 2px solid white;
+        }
+
+        .bar:hover, .stacked-bar-segment:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .x-axis-labels {
+            display: flex;
+            margin-top: 10px;
+            font-size: 10px;
+            color: #6b7280;
+            margin-left: 35px;
+            padding: 0 5px;
+            position: relative;
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            background: #f3f4f6;
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .device-info {
+            background: #1f66ff;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+            #color-editor-container .control-group {
+                grid-column: span 1;
+            }
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>移动端柱状图自适应预览器</h1>
+            <p>基于设计规范的多端自适应效果展示</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-grid">
+                <div class="control-group">
+                    <label>设备宽度 (px)</label>
+                    <input type="range" id="deviceWidth" min="320" max="2560" value="375" 
+                           oninput="updateChart()" onchange="updateChart()">
+                    <span id="widthValue" style="font-size: 12px; color: #6b7280; margin-top: 4px;">375px</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>数据个数</label>
+                    <input type="range" id="dataCount" min="3" max="20" value="8" 
+                           oninput="updateChart()" onchange="updateChart()">
+                    <span id="countValue" style="font-size: 12px; color: #6b7280; margin-top: 4px;">8个</span>
+                </div>
+                
+                <div class="control-group">
+                    <label>图表类型</label>
+                    <select id="chartType" onchange="updateChart()">
+                        <option value="single">普通柱状图</option>
+                        <option value="grouped">分组柱状图</option>
+                        <option value="stacked">堆叠柱状图</option>
+                        <option value="line">折线图</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>数据墨水比</label>
+                    <select id="inkRatio" onchange="updateChart()">
+                        <option value="0.2">0.2</option>
+                        <option value="0.25">0.25</option>
+                        <option value="0.3">0.3</option>
+                        <option value="0.35">0.35</option>
+                        <option value="0.4">0.4（普通和堆叠柱状图使用）</option>
+                        <option value="0.45">0.45</option>
+                        <option value="0.5" selected>0.5</option>
+                        <option value="0.55">0.55</option>
+                        <option value="0.6">0.6(分组柱状图使用)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label id="groupCountLabel">分组/堆叠/线条数</label>
+                    <select id="groupCount" onchange="updateChart()">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                        <option value="16">16</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>显示选项</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="showAreaOverlay" onchange="updateChart()">
+                        <label for="showAreaOverlay" style="font-weight: normal; margin: 0;">显示区域蒙层</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="showGradient" onchange="updateChart()" checked>
+                        <label for="showGradient" style="font-weight: normal; margin: 0;">显示柱状渐变</label>
+                    </div>
+                </div>
+
+                <div id="color-editor-container" class="control-group">
+                    <label>自定义颜色</label>
+                    <div id="color-input-area">
+                        <textarea id="customColors" placeholder="例如: #ff6b6b, #48dbfb, #1dd1a1"></textarea>
+                        <button id="confirm-colors-btn">确认</button>
+                    </div>
+                    <div id="color-chips-area">
+                        <div id="color-chips-container"></div>
+                        <button id="edit-colors-btn" class="secondary">编辑</button>
+                    </div>
+                    <input type="color" id="color-picker">
+                </div>
+            </div>
+        </div>
+
+        <div class="device-preview">
+            <div class="device-frame" id="deviceFrame">
+                <div class="device-info" id="deviceInfo">
+                    直板手机 - 375px
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">销售数据统计</div>
+                    <div class="chart-wrapper">
+                        <div class="y-axis-container">
+                            <div class="y-axis-labels" id="yAxisLabels"></div>
+                        </div>
+                        <div class="bars-container" id="barsContainer">
+                            <div class="x-axis-line"></div>
+                        </div>
+                    </div>
+                    <div class="x-axis-labels" id="xAxisLabels"></div>
+                    <div class="stats" id="stats"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const defaultColors = ['#1f66ff', '#A3D175', '#A177F6', '#FBAE2A'];
+        let activeColors = [...defaultColors];
+        const dataLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
+        const chartHeight = 180;
+
+        function getDeviceType(width) {
+            if (width <= 480) return { type: '直板手机', range: '320px - 480px' };
+            if (width <= 900) return { type: '折叠屏', range: '600px - 900px' };
+            if (width <= 1024) return { type: 'PAD端', range: '768px - 1024px' };
+            return { type: 'PC端', range: '1024px+' };
+        }
+        
+        function setupColorEditor() {
+            const confirmBtn = document.getElementById('confirm-colors-btn');
+            const editBtn = document.getElementById('edit-colors-btn');
+            const colorInputArea = document.getElementById('color-input-area');
+            const colorChipsArea = document.getElementById('color-chips-area');
+            const customColorsText = document.getElementById('customColors');
+
+            confirmBtn.addEventListener('click', () => {
+                const input = customColorsText.value;
+                const hexRegex = /#[0-9a-fA-F]{6}/g;
+                const matches = input.match(hexRegex);
+                
+                if (matches && matches.length > 0) {
+                    activeColors = matches;
+                } else {
+                    activeColors = [...defaultColors];
+                    customColorsText.value = activeColors.join(', ');
+                    alert("未找到有效的HEX颜色代码，已重置为默认颜色。");
+                    return;
+                }
+                
+                renderColorChips();
+                colorInputArea.style.display = 'none';
+                colorChipsArea.style.display = 'flex';
+                updateChart();
+            });
+
+            editBtn.addEventListener('click', () => {
+                customColorsText.value = activeColors.join(', ');
+                colorInputArea.style.display = 'flex';
+                colorChipsArea.style.display = 'none';
+            });
+            
+            renderColorChips();
+            confirmBtn.click();
+        }
+
+        function renderColorChips() {
+            const container = document.getElementById('color-chips-container');
+            const picker = document.getElementById('color-picker');
+            container.innerHTML = '';
+
+            activeColors.forEach((color, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'color-chip';
+                chip.style.backgroundColor = color;
+                chip.dataset.index = index;
+
+                chip.addEventListener('click', () => {
+                    picker.value = activeColors[index];
+                    picker.oninput = () => {
+                        const newColor = picker.value;
+                        activeColors[index] = newColor;
+                        chip.style.backgroundColor = newColor;
+                        updateChart();
+                    };
+                    picker.click();
+                });
+                container.appendChild(chip);
+            });
+        }
+
+        function generateRandomData(count, groupCount = 1) {
+             if (groupCount === 1) {
+                return Array.from({ length: count }, () => Math.floor(Math.random() * 80) + 20);
+             }
+             return Array.from({ length: count }, () => 
+                Array.from({ length: groupCount }, () => Math.floor(Math.random() * 80) + 20)
+             );
+        }
+
+        function updateChart() {
+            const deviceWidth = parseInt(document.getElementById('deviceWidth').value);
+            const dataCount = parseInt(document.getElementById('dataCount').value);
+            const chartType = document.getElementById('chartType').value;
+            const groupCount = parseInt(document.getElementById('groupCount').value);
+            const inkRatio = parseFloat(document.getElementById('inkRatio').value);
+            const showAreaOverlay = document.getElementById('showAreaOverlay').checked;
+            const showGradient = document.getElementById('showGradient').checked;
+            
+            const colors = activeColors;
+
+            document.getElementById('widthValue').textContent = `${deviceWidth}px`;
+            document.getElementById('countValue').textContent = `${dataCount}个`;
+            const deviceInfo = getDeviceType(deviceWidth);
+            document.getElementById('deviceInfo').textContent = `${deviceInfo.type} - ${deviceWidth}px`;
+            document.getElementById('deviceFrame').style.width = `${deviceWidth}px`;
+
+            const leftMargin = 24;
+            const rightMargin = 24;
+            const yAxisWidth = 35;
+            const chartAreaWidth = deviceWidth - leftMargin - rightMargin - yAxisWidth;
+            
+            const maxBarWidth = 32;
+            let barWidth, intraGroupGap = 0;
+            let barsData = [];
+            let actualInkRatio = 0;
+            const avgAreaWidth = chartAreaWidth / dataCount;
+
+            if (chartType === 'single') {
+                barWidth = Math.min(avgAreaWidth * inkRatio, maxBarWidth);
+                actualInkRatio = (barWidth * dataCount) / chartAreaWidth;
+                barsData = generateRandomData(dataCount).map((value) => ({
+                    value, color: colors[0], width: barWidth
+                }));
+            } else if (chartType === 'grouped') {
+                const groupBarTotalWidth = avgAreaWidth * inkRatio;
+                intraGroupGap = Math.max(Math.min(groupBarTotalWidth / groupCount * 0.25, 8), 2);
+                barWidth = Math.max((groupBarTotalWidth - (intraGroupGap * (groupCount - 1))) / groupCount, 4);
+                barWidth = Math.min(barWidth, maxBarWidth);
+                const actualGroupWidth = barWidth * groupCount + intraGroupGap * (groupCount - 1);
+                actualInkRatio = (actualGroupWidth * dataCount) / chartAreaWidth;
+                barsData = generateRandomData(dataCount, groupCount).map(group => 
+                    group.map((value, groupIndex) => ({
+                        value, color: colors[groupIndex % colors.length], width: barWidth
+                    }))
+                );
+            } else if (chartType === 'stacked') {
+                barWidth = Math.min(avgAreaWidth * inkRatio, maxBarWidth);
+                actualInkRatio = (barWidth * dataCount) / chartAreaWidth;
+                barsData = generateRandomData(dataCount, groupCount).map(stack => 
+                    stack.map((value, stackIndex) => ({
+                        value, color: colors[stackIndex % colors.length], width: barWidth
+                    }))
+                );
+            } else if (chartType === 'line') {
+                barsData = Array.from({ length: groupCount }, (_, lineIndex) => 
+                    Array.from({ length: dataCount }, () => ({
+                        value: Math.floor(Math.random() * 80) + 20,
+                        color: colors[lineIndex % colors.length]
+                    }))
+                );
+                actualInkRatio = 0;
+            }
+
+            const barsContainer = document.getElementById('barsContainer');
+            barsContainer.innerHTML = '<div class="x-axis-line"></div>';
+
+            let maxValue = 100;
+            if (chartType === 'stacked') {
+                const totalValues = barsData.map(stack => stack.reduce((sum, item) => sum + item.value, 0));
+                maxValue = Math.max(...totalValues, 100);
+            } else if (chartType !== 'line') {
+                const allValues = barsData.flat().map(d => d.value);
+                maxValue = Math.max(...allValues, 100);
+            } else if (barsData.length > 0) {
+                 const allValues = barsData.flat().map(d => d.value);
+                 maxValue = Math.max(...allValues, 100);
+            }
+            const yAxisMax = Math.ceil(maxValue / 20) * 20;
+
+            const yAxisLabels = document.getElementById('yAxisLabels');
+            yAxisLabels.innerHTML = '';
+            for (let i = 0; i <= 5; i++) {
+                const label = document.createElement('span');
+                label.textContent = (yAxisMax / 5 * i).toFixed(0);
+                yAxisLabels.appendChild(label);
+            }
+
+            const scaleFactor = chartHeight / yAxisMax;
+
+            if (chartType === 'single') {
+                barsData.forEach((bar, index) => {
+                    const barElement = document.createElement('div');
+                    barElement.className = 'bar';
+                    barElement.style.width = `${bar.width}px`;
+                    barElement.style.height = `${bar.value * scaleFactor}px`;
+                    
+                    if (showGradient) {
+                        barElement.style.background = `linear-gradient(to bottom, ${bar.color}, ${bar.color}90)`;
+                    } else {
+                        barElement.style.background = bar.color;
+                    }
+
+                    barElement.style.position = 'absolute';
+                    const centerX = index * avgAreaWidth + avgAreaWidth / 2;
+                    barElement.style.left = `${centerX - bar.width / 2}px`;
+                    barsContainer.appendChild(barElement);
+                });
+            } else if (chartType === 'grouped') {
+                barsData.forEach((group, groupIndex) => {
+                    const groupElement = document.createElement('div');
+                    groupElement.className = 'bar-group';
+                    groupElement.style.gap = `${intraGroupGap}px`;
+                    groupElement.style.position = 'absolute';
+                    const groupTotalWidth = barWidth * groupCount + intraGroupGap * (groupCount - 1);
+                    const centerX = groupIndex * avgAreaWidth + avgAreaWidth / 2;
+                    groupElement.style.left = `${centerX - groupTotalWidth / 2}px`;
+                    
+                    group.forEach(bar => {
+                        const barElement = document.createElement('div');
+                        barElement.className = 'bar';
+                        barElement.style.width = `${bar.width}px`;
+                        barElement.style.height = `${bar.value * scaleFactor}px`;
+
+                        if (showGradient) {
+                            barElement.style.background = `linear-gradient(to bottom, ${bar.color}, ${bar.color}90)`;
+                        } else {
+                            barElement.style.background = bar.color;
+                        }
+
+                        groupElement.appendChild(barElement);
+                    });
+                    barsContainer.appendChild(groupElement);
+                });
+            } else if (chartType === 'stacked') {
+                barsData.forEach((stack, index) => {
+                    const stackContainer = document.createElement('div');
+                    stackContainer.className = 'bar stacked-container';
+                    stackContainer.style.width = `${barWidth}px`;
+                    stackContainer.style.position = 'absolute';
+                    const centerX = index * avgAreaWidth + avgAreaWidth / 2;
+                    stackContainer.style.left = `${centerX - barWidth / 2}px`;
+                    stackContainer.style.bottom = '0';
+                    
+                    let accumulatedHeight = 0;
+                    stack.forEach(segment => {
+                        const segmentElement = document.createElement('div');
+                        segmentElement.className = 'stacked-bar-segment';
+                        const segmentHeight = segment.value * scaleFactor;
+                        segmentElement.style.height = `${segmentHeight}px`;
+                        segmentElement.style.background = segment.color; // Stacked bars use solid color
+                        segmentElement.style.bottom = `${accumulatedHeight}px`;
+                        accumulatedHeight += segmentHeight;
+                        stackContainer.appendChild(segmentElement);
+                    });
+                    stackContainer.style.height = `${accumulatedHeight}px`;
+                    barsContainer.appendChild(stackContainer);
+                });
+            } else if (chartType === 'line') {
+                const lineContainer = document.createElement('div');
+                lineContainer.className = 'line-container';
+                const svgNS = 'http://www.w3.org/2000/svg';
+                const svg = document.createElementNS(svgNS, 'svg');
+                svg.setAttribute('viewBox', `0 0 ${chartAreaWidth} ${chartHeight}`);
+                svg.style.width = '100%';
+                svg.style.height = '100%';
+                svg.style.position = 'absolute';
+                svg.style.top = '0';
+                svg.style.left = '0';
+                svg.style.overflow = 'visible';
+                
+                barsData.forEach((lineData) => {
+                    let pathData = '';
+                    lineData.forEach((point, pointIndex) => {
+                        const centerX = pointIndex * avgAreaWidth + avgAreaWidth / 2;
+                        const y = chartHeight - (point.value * scaleFactor);
+                        pathData += `${pointIndex === 0 ? 'M' : 'L'} ${centerX} ${y}`;
+                    });
+                    const path = document.createElementNS(svgNS, 'path');
+                    path.setAttribute('d', pathData);
+                    path.setAttribute('stroke', lineData[0].color);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('stroke-linecap', 'round');
+                    path.setAttribute('stroke-linejoin', 'round');
+                    svg.appendChild(path);
+                });
+                lineContainer.appendChild(svg);
+                barsContainer.appendChild(lineContainer);
+            }
+
+            if (showAreaOverlay && chartType !== 'line') {
+                for (let i = 0; i < dataCount; i++) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'area-overlay visible';
+                    overlay.style.left = `${i * avgAreaWidth}px`;
+                    overlay.style.width = `${avgAreaWidth}px`;
+                    barsContainer.appendChild(overlay);
+                }
+            }
+
+            const xAxisLabels = document.getElementById('xAxisLabels');
+            xAxisLabels.innerHTML = '';
+            for (let i = 0; i < dataCount; i++) {
+                const label = document.createElement('span');
+                label.textContent = dataLabels[i];
+                label.style.position = 'absolute';
+                label.style.left = `${i * avgAreaWidth + avgAreaWidth / 2}px`;
+                label.style.transform = 'translateX(-50%)';
+                xAxisLabels.appendChild(label);
+            }
+
+            const stats = document.getElementById('stats');
+            if (chartType === 'line') {
+                stats.innerHTML = `
+                    <div class="stat-item"><div class="stat-label">图表区域宽度</div><div class="stat-value">${chartAreaWidth}px</div></div>
+                    <div class="stat-item"><div class="stat-label">数据点间距</div><div class="stat-value">${avgAreaWidth.toFixed(1)}px</div></div>
+                    <div class="stat-item"><div class="stat-label">线条数量</div><div class="stat-value">${groupCount}条</div></div>
+                    <div class="stat-item"><div class="stat-label">线条宽度</div><div class="stat-value">2px</div></div>`;
+            } else {
+                const interBarGap = chartType === 'single' || chartType === 'stacked'
+                    ? avgAreaWidth - barWidth
+                    : avgAreaWidth - (barWidth * groupCount + intraGroupGap * (groupCount - 1));
+                stats.innerHTML = `
+                    <div class="stat-item"><div class="stat-label">图表区域宽度</div><div class="stat-value">${chartAreaWidth}px</div></div>
+                    <div class="stat-item"><div class="stat-label">平均区域宽度</div><div class="stat-value">${avgAreaWidth.toFixed(1)}px</div></div>
+                    <div class="stat-item"><div class="stat-label">柱子宽度</div><div class="stat-value">${barWidth.toFixed(1)}px</div></div>
+                    <div class="stat-item"><div class="stat-label">目标墨水比</div><div class="stat-value">${inkRatio}</div></div>
+                    <div class="stat-item"><div class="stat-label">实际墨水比</div><div class="stat-value">${actualInkRatio.toFixed(3)}</div></div>
+                    <div class="stat-item"><div class="stat-label">区域间距</div><div class="stat-value">${interBarGap.toFixed(1)}px</div></div>
+                    ${chartType === 'grouped' ? `<div class="stat-item"><div class="stat-label">组内间距</div><div class="stat-value">${intraGroupGap.toFixed(1)}px</div></div>` : ''}
+                `;
+            }
+        }
+
+        window.onload = function() {
+            setupColorEditor();
+            updateChart();
+        };
+
+        window.addEventListener('resize', updateChart);
+    </script>
+</body>
+</html>

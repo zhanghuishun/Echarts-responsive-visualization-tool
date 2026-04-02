@@ -1,45 +1,68 @@
 import type { EChartsOption } from 'echarts'
 import { chartDemoState } from '@/state/chartDemoState'
+import { calcBarLayoutStats } from '@/composables/calcBarLayoutStats'
 
 /** 稳定可复现的示例数据，组索引不同则数值略有差异 */
-function buildSeriesValues(len: number, groupIndex: number): number[] {
+function buildSeriesValues(
+  len: number,
+  groupIndex: number,
+  startIndex: number,
+): number[] {
   return Array.from(
     { length: len },
-    (_, i) => 20 + ((i * 17 + 13 + groupIndex * 11) % 61),
+    (_, i) => {
+      const globalIndex = i + startIndex
+      return 20 + ((globalIndex * 17 + 13 + groupIndex * 11) % 61)
+    },
   )
 }
 
-export function buildChartOption(_containerWidthPx: number): EChartsOption {
-  void _containerWidthPx
-  const categoryLen = Math.max(1, chartDemoState.categoryCount)
+export interface CategoryWindow {
+  startIndex: number
+  visibleCategoryCount: number
+}
+
+export function buildChartOption(
+  _containerWidthPx: number,
+  window?: Partial<CategoryWindow>,
+): EChartsOption {
+  const containerWidthPx = Math.max(1, _containerWidthPx)
+  const totalCategoryCount = Math.max(1, chartDemoState.categoryCount)
   const groupCount = Math.max(1, Math.min(8, chartDemoState.groupCount))
 
-  const categories = Array.from(
-    { length: categoryLen },
-    (_, i) => `类目 ${i + 1}`,
+  const requestedVisible = Math.max(
+    1,
+    Math.min(totalCategoryCount, window?.visibleCategoryCount ?? totalCategoryCount),
   )
+  const requestedStart = window?.startIndex ?? 0
+  const maxStart = Math.max(0, totalCategoryCount - requestedVisible)
+  const startIndex = Math.min(Math.max(0, requestedStart), maxStart)
+  const categoryLen = requestedVisible
 
-  const barWidthProps = {
-    ...(chartDemoState.barWidthMode === 'pixel'
-      ? { barWidth: chartDemoState.barWidthPixel }
-      : { barWidth: `${chartDemoState.barWidthPercent}%` }),
-    ...(chartDemoState.useBarMaxWidth
-      ? { barMaxWidth: chartDemoState.barMaxWidth }
-      : {}),
-    ...(chartDemoState.useBarMinWidth
-      ? { barMinWidth: chartDemoState.barMinWidth }
-      : {}),
-  }
+  const { barWidthPx, barGapPx } = calcBarLayoutStats(containerWidthPx, {
+    categoryCount: categoryLen,
+  })
+  // ECharts 的 barGap 不是 px，它按“相对 barWidth 的百分比”解析。
+  // 因此把我们计算得到的 barGapPx 换算回 barGapPercent。
+  const barGapPercent =
+    groupCount > 1 && barWidthPx > 0 ? (barGapPx / barWidthPx) * 100 : 0
+  const barGapValue = `${barGapPercent}%`
+
+  const categories = Array.from({ length: categoryLen }, (_, i) => `类目 ${i + startIndex + 1}`)
 
   const series = Array.from({ length: groupCount }, (_, g) => {
     const name = `组 ${g + 1}`
     const item = {
       name,
       type: 'bar' as const,
-      data: buildSeriesValues(categoryLen, g),
-      barCategoryGap: chartDemoState.barCategoryGap,
-      ...barWidthProps,
-      ...(groupCount > 1 ? { barGap: chartDemoState.barGap } : {}),
+      // 关闭默认的“出现/更新动画”，避免柱子从下往上上浮。
+      animation: false,
+      data: buildSeriesValues(categoryLen, g, startIndex),
+      // 新算法不使用 barCategoryGap：固定为 0%，避免“类目 band 剩余宽度”口径不一致。
+      barCategoryGap: '0%',
+      // 这里用像素值强制控制占用宽度，保证“同一类目内所有柱子”不会超出可用区域。
+      barWidth: barWidthPx,
+      ...(groupCount > 1 ? { barGap: barGapValue } : {}),
     }
     return item
   })
@@ -52,6 +75,8 @@ export function buildChartOption(_containerWidthPx: number): EChartsOption {
 
   const option: EChartsOption = {
     color: colors,
+    // 关闭全局动画，避免 ECharts 默认逐帧渲染带来的柱子上浮感。
+    animation: false,
     tooltip: { trigger: 'axis' },
     ...(groupCount > 1
       ? {

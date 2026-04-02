@@ -210,9 +210,9 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
 
       <section class="block">
         <div class="section-head">
-          <h2 class="h">柱子宽度</h2>
+          <h2 class="h">数据墨水比（inkRatio）</h2>
           <ParamHint
-            text="固定像素：柱宽为绝对像素。百分比：相对每个类目在 grid 内可用宽度的比例。可与 barMaxWidth / barMinWidth 联用。"
+            text="固定像素：柱宽为绝对像素。百分比（inkRatio）：控制“同一类目下所有柱子的合计宽度”占类目可用宽度的比例；系统会推导分组柱的柱宽与组内间距，并确保柱子不超出各自类目区域。"
           />
         </div>
         <div class="segmented">
@@ -241,7 +241,7 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
           />
         </label>
         <label v-else class="row row-barwidth-pct">
-          <span class="row-label">barWidth (%)</span>
+          <span class="row-label">inkRatio (%)</span>
           <input
             v-model.number="chartDemoState.barWidthPercent"
             class="range-input"
@@ -269,6 +269,28 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
           <input v-model="chartDemoState.useBarMinWidth" type="checkbox" />
           <span class="row-label">barMinWidth</span>
         </label>
+        <div v-if="chartDemoState.useBarMinWidth" class="strategy-row">
+          <div class="strategy-label">
+            小屏策略
+            <ParamHint text="当柱宽低于 barMinWidth 时，选择拖拽连续查看（A）或按页翻页（B）。" />
+          </div>
+          <div class="segmented">
+            <button
+              type="button"
+              :class="{ on: chartDemoState.smallScreenStrategy === 'drag' }"
+              @click="chartDemoState.smallScreenStrategy = 'drag'"
+            >
+              拖拽连续
+            </button>
+            <button
+              type="button"
+              :class="{ on: chartDemoState.smallScreenStrategy === 'page' }"
+              @click="chartDemoState.smallScreenStrategy = 'page'"
+            >
+              左滑翻页
+            </button>
+          </div>
+        </div>
         <label v-if="chartDemoState.useBarMinWidth" class="row">
           <span class="row-label">px</span>
           <input
@@ -286,10 +308,15 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
           <span class="row-label">
             barCategoryGap
             <ParamHint
-              text="类目与类目之间的留白。字符串百分比（须带 %，如 20%）相对「类目轴上每个类目所占宽度」参与布局；若只填数字（如 20），会被当成像素，在宽图里几乎看不出变化。与 barWidth（尤其百分比柱宽）会互相挤压，可先把柱宽调小再试 10% 与 60% 对比。"
+              text="当前新算法不使用 barCategoryGap，为了保证口径一致，固定为 0%。"
             />
           </span>
-          <input v-model="chartDemoState.barCategoryGap" class="input-text" type="text" />
+          <input
+            v-model="chartDemoState.barCategoryGap"
+            class="input-text"
+            type="text"
+            disabled
+          />
         </label>
         <label v-if="chartDemoState.groupCount > 1" class="row">
           <span class="row-label">
@@ -654,6 +681,21 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--demo-border);
+}
+
+.strategy-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.strategy-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  color: var(--demo-muted);
 }
 
 .segmented button {
