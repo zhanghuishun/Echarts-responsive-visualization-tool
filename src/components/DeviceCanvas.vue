@@ -42,10 +42,10 @@ const layoutStats = computed(() =>
 <template>
   <div class="device">
     <header class="device-toolbar">
-      <h1 class="title">ECharts 条形图 · 响应式调参</h1>
-      <div class="toolbar-row">
-        <label class="field">
-          <span class="label">
+      <h1 class="title">ECharts 柱形图可视化调节工具</h1>
+      <div class="toolbar-row toolbar-row-canvas-w">
+        <label class="field field-canvas-dim">
+          <span class="label label-canvas-dim">
             画布宽度
             <ParamHint
               text="模拟视口内容区宽度；受浏览器窗口与右侧栏占位影响，滑块最大值为「可调上限」。"
@@ -69,14 +69,16 @@ const layoutStats = computed(() =>
           :max="maxCanvasWidth"
           step="1"
         />
-        <label class="field">
-          <span class="label">
-            图表高度
-            <ParamHint text="图表绘制区域高度（像素），即 ECharts 容器高度。" />
+      </div>
+      <div class="toolbar-row toolbar-row-canvas-h">
+        <label class="field field-canvas-dim">
+          <span class="label label-canvas-dim">
+            画布高度
+            <ParamHint text="预览区域高度（像素），即图表容器高度。" />
           </span>
           <input
             v-model.number="chartDemoState.chartHeight"
-            class="input-num input-num-wide"
+            class="input-num"
             type="number"
             min="200"
             max="900"
@@ -84,6 +86,8 @@ const layoutStats = computed(() =>
           />
           <span class="unit">px</span>
         </label>
+      </div>
+      <div class="toolbar-row toolbar-row-effective">
         <span class="effective">
           当前渲染
           <strong>{{ Math.round(effectiveWidth) }}</strong>
@@ -114,18 +118,12 @@ const layoutStats = computed(() =>
         </button>
       </div>
       <div class="layout-stats" aria-live="polite">
-        <div class="layout-row">
-          <span class="layout-label">当前柱宽</span>
-          <span class="layout-value">{{ layoutStats.barWidthPx.toFixed(1) }}px</span>
-        </div>
-        <div v-if="layoutStats.groupCount > 1" class="layout-row">
+        <span class="layout-label">当前柱宽</span>
+        <span class="layout-value">{{ layoutStats.barWidthPx.toFixed(1) }}px</span>
+        <template v-if="layoutStats.groupCount > 1">
           <span class="layout-label">当前柱间距（组内）</span>
           <span class="layout-value">{{ layoutStats.barGapPx.toFixed(1) }}px</span>
-        </div>
-        <div class="layout-row">
-          <span class="layout-label">当前类目间距</span>
-          <span class="layout-value">{{ layoutStats.barCategoryGapPx.toFixed(1) }}px</span>
-        </div>
+        </template>
       </div>
     </header>
 
@@ -158,6 +156,7 @@ const layoutStats = computed(() =>
   gap: 0.65rem;
   width: 100%;
   max-width: 100%;
+  align-items: flex-start;
 }
 
 .title {
@@ -172,7 +171,30 @@ const layoutStats = computed(() =>
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem 1rem;
+  gap: 0.5rem 0.65rem;
+}
+
+.toolbar-row-canvas-w,
+.toolbar-row-canvas-h {
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.toolbar-row-effective {
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+}
+
+.field-canvas-dim {
+  flex: 0 0 auto;
+}
+
+/* 标签 + i 随内容宽度，避免拉满固定列宽造成标题右侧大块留白 */
+.label-canvas-dim {
+  flex: 0 0 auto;
+  justify-content: flex-start;
 }
 
 .field {
@@ -186,7 +208,7 @@ const layoutStats = computed(() =>
 .label {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   white-space: nowrap;
 }
 
@@ -194,10 +216,6 @@ const layoutStats = computed(() =>
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-}
-
-.input-num-wide {
-  width: 4.25rem;
 }
 
 .input-num {
@@ -237,6 +255,8 @@ const layoutStats = computed(() =>
 
 .breakpoints {
   align-items: center;
+  /* 断点标签与按钮之间略收紧 */
+  gap: 0.4rem 0.45rem;
 }
 
 .hint {
@@ -260,33 +280,32 @@ const layoutStats = computed(() =>
 }
 
 .layout-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  align-self: flex-start; /* 不要在 flex 交叉轴上拉伸 */
-  flex: 0 0 auto;
-  width: max-content; /* 避免被撑满导致视觉拉伸 */
-  padding: 0.5rem 0.65rem; /* 保留内部留白，便于读数 */
+  display: grid;
+  /* 第一列随最长标签收缩，不再用固定 rem 撑开 */
+  grid-template-columns: max-content auto;
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
+  align-items: baseline;
+  justify-items: start;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
   border: none;
   border-radius: 0;
-  background: transparent; /* 去掉卡片背景 */
-}
-
-.layout-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.75rem;
+  background: transparent;
   font-size: 0.82rem;
 }
 
 .layout-label {
   color: var(--demo-muted);
+  text-align: left;
 }
 
 .layout-value {
   color: var(--demo-text);
   font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 
 .device-frame {

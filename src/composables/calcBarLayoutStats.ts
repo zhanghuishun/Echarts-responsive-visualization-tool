@@ -18,7 +18,6 @@ function parseOffsetToPx(raw: string, containerWidthPx: number): number {
 
 export interface BarLayoutStats {
   categoryBandPx: number
-  barCategoryGapPx: number
   availableCategoryWidthPx: number
   inkRatio: number
   barWidthPx: number
@@ -56,9 +55,7 @@ export function calcBarLayoutStats(
   const gridWidthPx = Math.max(1, safeContainerWidthPx - gridLeftPx - gridRightPx)
   const categoryBandPx = gridWidthPx / Math.max(1, categoryCount)
 
-  // 按你的口径：categoryBandPx 就是“类目 band 的平均区域宽度”；
-  // 本算法不需要 barCategoryGap 概念，因此强制当作 0。
-  const barCategoryGapPx = 0
+  // 按你的口径：categoryBandPx 就是“类目 band 的平均区域宽度”。
   // 为了严格不溢出，这里仍保留安全系数（避免 ECharts 边界取整导致的 1px 偏差）。
   const SAFETY_FACTOR = 1
   const availableCategoryWidthPx = Math.max(1, categoryBandPx * SAFETY_FACTOR)
@@ -138,7 +135,6 @@ export function calcBarLayoutStats(
 
   return {
     categoryBandPx,
-    barCategoryGapPx,
     availableCategoryWidthPx,
     inkRatio,
     barWidthPx,

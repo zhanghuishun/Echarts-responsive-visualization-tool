@@ -29,7 +29,7 @@ const mainStyle = computed(() => {
         :max-canvas-width="maxCanvasWidth"
       />
     </main>
-    <ControlPanel :effective-canvas-width="effectiveCanvasWidth" />
+    <ControlPanel />
   </div>
 </template>
 

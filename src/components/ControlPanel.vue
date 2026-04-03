@@ -3,9 +3,7 @@ import { computed, ref, watch } from 'vue'
 import ParamHint from '@/components/ParamHint.vue'
 import {
   chartDemoState,
-  DEFAULT_COLOR_PALETTE,
   DEFAULT_GRID,
-  PALETTE_PRESETS,
   PANEL_COLLAPSED_STRIP_PX,
   PANEL_EXPANDED_WIDTH_PX,
   type ChartDemoState,
@@ -15,14 +13,12 @@ import {
   savePresets,
   type PresetRecord,
 } from '@/composables/presets'
-
-const props = defineProps<{
-  effectiveCanvasWidth: number
-}>()
+import { getChartPngDataUrl } from '@/chartExportRegistry'
 
 const presets = ref<PresetRecord[]>(loadPresets())
 const presetName = ref('')
 const copyStatus = ref<'idle' | 'ok' | 'err'>('idle')
+const pngStatus = ref<'idle' | 'ok' | 'err'>('idle')
 /** Grid 高级调节：默认收起，收起时恢复 DEFAULT_GRID */
 const gridSectionOpen = ref(false)
 
@@ -31,6 +27,13 @@ function toggleGridSection() {
     Object.assign(chartDemoState, DEFAULT_GRID)
   }
   gridSectionOpen.value = !gridSectionOpen.value
+}
+
+/** 百分比 barWidth：与滑块共用状态，输入框失焦/变更时限制在 5–100 */
+function clampBarWidthPercent() {
+  const raw = chartDemoState.barWidthPercent
+  const n = typeof raw === 'number' && !Number.isNaN(raw) ? raw : 40
+  chartDemoState.barWidthPercent = Math.min(100, Math.max(5, Math.round(n)))
 }
 
 const gridHintText = computed(
@@ -56,11 +59,52 @@ function cloneState(): ChartDemoState {
   return JSON.parse(JSON.stringify(chartDemoState)) as ChartDemoState
 }
 
-function applyPreset(p: PresetRecord) {
-  const raw = JSON.parse(JSON.stringify(p.state)) as Partial<ChartDemoState>
-  if (!raw.colorPalette?.length) {
-    raw.colorPalette = [...DEFAULT_COLOR_PALETTE]
+/** 交给业务开发复现时仅需的配置项（不含画布尺寸、面板状态等演示字段） */
+function getChartParamsForExport(): Pick<
+  ChartDemoState,
+  | 'categoryCount'
+  | 'groupCount'
+  | 'smallScreenStrategy'
+  | 'barWidthMode'
+  | 'barWidthPixel'
+  | 'barWidthPercent'
+  | 'useBarMaxWidth'
+  | 'barMaxWidth'
+  | 'useBarMinWidth'
+  | 'barMinWidth'
+  | 'barGap'
+  | 'gridLeft'
+  | 'gridRight'
+  | 'gridTop'
+  | 'gridBottom'
+> {
+  const s = chartDemoState
+  return {
+    categoryCount: s.categoryCount,
+    groupCount: s.groupCount,
+    smallScreenStrategy: s.smallScreenStrategy,
+    barWidthMode: s.barWidthMode,
+    barWidthPixel: s.barWidthPixel,
+    barWidthPercent: s.barWidthPercent,
+    useBarMaxWidth: s.useBarMaxWidth,
+    barMaxWidth: s.barMaxWidth,
+    useBarMinWidth: s.useBarMinWidth,
+    barMinWidth: s.barMinWidth,
+    barGap: s.barGap,
+    gridLeft: s.gridLeft,
+    gridRight: s.gridRight,
+    gridTop: s.gridTop,
+    gridBottom: s.gridBottom,
   }
+}
+
+function applyPreset(p: PresetRecord) {
+  const raw = JSON.parse(JSON.stringify(p.state)) as Partial<ChartDemoState> & {
+    colorPalette?: unknown
+    barCategoryGap?: unknown
+  }
+  delete raw.colorPalette
+  delete raw.barCategoryGap
   Object.assign(chartDemoState, raw as ChartDemoState)
 }
 
@@ -79,14 +123,9 @@ function removePreset(name: string) {
   presets.value = presets.value.filter((p) => p.name !== name)
 }
 
-const exportText = computed(() => {
-  const payload = {
-    effectiveCanvasWidth: props.effectiveCanvasWidth,
-    canvasWidthModel: chartDemoState.canvasWidth,
-    chart: cloneState(),
-  }
-  return JSON.stringify(payload, null, 2)
-})
+const exportText = computed(() =>
+  JSON.stringify(getChartParamsForExport(), null, 2),
+)
 
 async function copyExport() {
   copyStatus.value = 'idle'
@@ -101,9 +140,25 @@ async function copyExport() {
   }
 }
 
-function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
-  const p = PALETTE_PRESETS[key]
-  chartDemoState.colorPalette = [...p]
+function exportPng() {
+  pngStatus.value = 'idle'
+  const url = getChartPngDataUrl()
+  if (!url) {
+    pngStatus.value = 'err'
+    return
+  }
+  const name = `bar-chart-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  pngStatus.value = 'ok'
+  setTimeout(() => {
+    pngStatus.value = 'idle'
+  }, 2000)
 }
 
 </script>
@@ -157,62 +212,9 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
 
       <section class="block">
         <div class="section-head">
-          <h2 class="h">全局配色</h2>
+          <h2 class="h">柱宽</h2>
           <ParamHint
-            text="对应 ECharts 全局 color：按系列顺序取色，多于色盘个数时循环。分组图每组对应一种颜色。"
-          />
-        </div>
-        <div class="palette-presets">
-          <button
-            type="button"
-            class="btn chip"
-            @click="applyPalettePreset('default')"
-          >
-            默认
-          </button>
-          <button
-            type="button"
-            class="btn chip"
-            @click="applyPalettePreset('warm')"
-          >
-            暖色
-          </button>
-          <button
-            type="button"
-            class="btn chip"
-            @click="applyPalettePreset('cool')"
-          >
-            冷色
-          </button>
-          <button
-            type="button"
-            class="btn chip"
-            @click="applyPalettePreset('contrast')"
-          >
-            高对比
-          </button>
-        </div>
-        <div class="palette-grid">
-          <label
-            v-for="(_, index) in chartDemoState.colorPalette"
-            :key="index"
-            class="color-slot"
-          >
-            <span class="color-index">{{ index + 1 }}</span>
-            <input
-              v-model="chartDemoState.colorPalette[index]"
-              class="color-input"
-              type="color"
-            />
-          </label>
-        </div>
-      </section>
-
-      <section class="block">
-        <div class="section-head">
-          <h2 class="h">数据墨水比（inkRatio）</h2>
-          <ParamHint
-            text="固定像素：柱宽为绝对像素。百分比（inkRatio）：控制“同一类目下所有柱子的合计宽度”占类目可用宽度的比例；系统会推导分组柱的柱宽与组内间距，并确保柱子不超出各自类目区域。"
+            text="固定像素：柱宽为绝对像素。百分比（barWidth）：控制“同一类目下所有柱子的合计宽度”占类目可用宽度的比例；系统会推导分组柱的柱宽与组内间距，并确保柱子不超出各自类目区域。"
           />
         </div>
         <div class="segmented">
@@ -241,7 +243,7 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
           />
         </label>
         <label v-else class="row row-barwidth-pct">
-          <span class="row-label">inkRatio (%)</span>
+          <span class="row-label">barWidth (%)</span>
           <input
             v-model.number="chartDemoState.barWidthPercent"
             class="range-input"
@@ -249,8 +251,19 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
             min="5"
             max="100"
             step="1"
+            @change="clampBarWidthPercent"
           />
-          <span class="mono">{{ chartDemoState.barWidthPercent }}%</span>
+          <input
+            v-model.number="chartDemoState.barWidthPercent"
+            class="barwidth-pct-num"
+            type="number"
+            min="5"
+            max="100"
+            step="1"
+            @change="clampBarWidthPercent"
+            @blur="clampBarWidthPercent"
+          />
+          <span class="pct-unit">%</span>
         </label>
         <label class="row check">
           <input v-model="chartDemoState.useBarMaxWidth" type="checkbox" />
@@ -302,23 +315,9 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
         </label>
       </section>
 
-      <section class="block">
-        <h2 class="h">类目间距</h2>
+      <section v-if="chartDemoState.groupCount > 1" class="block">
+        <h2 class="h">组内间距</h2>
         <label class="row">
-          <span class="row-label">
-            barCategoryGap
-            <ParamHint
-              text="当前新算法不使用 barCategoryGap，为了保证口径一致，固定为 0%。"
-            />
-          </span>
-          <input
-            v-model="chartDemoState.barCategoryGap"
-            class="input-text"
-            type="text"
-            disabled
-          />
-        </label>
-        <label v-if="chartDemoState.groupCount > 1" class="row">
           <span class="row-label">
             barGap
             <ParamHint
@@ -330,20 +329,20 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
       </section>
 
       <section class="block block-accordion">
-        <div class="grid-head-row">
-          <button
-            type="button"
-            class="accordion-head"
-            :aria-expanded="gridSectionOpen"
-            @click="toggleGridSection"
-          >
+        <button
+          type="button"
+          class="accordion-head"
+          :aria-expanded="gridSectionOpen"
+          @click="toggleGridSection"
+        >
+          <span class="accordion-title-cluster">
             <h2 class="h">Grid</h2>
-            <span class="accordion-chev" aria-hidden="true">{{
-              gridSectionOpen ? '▼' : '▶'
-            }}</span>
-          </button>
-          <ParamHint :text="gridHintText" />
-        </div>
+            <ParamHint :text="gridHintText" />
+          </span>
+          <span class="accordion-chev" aria-hidden="true">{{
+            gridSectionOpen ? '▼' : '▶'
+          }}</span>
+        </button>
         <div v-show="gridSectionOpen" class="accordion-body">
           <label class="row">
             <span class="row-label">left</span>
@@ -379,7 +378,7 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
             placeholder="预设名称"
             @keydown.enter.prevent="saveCurrentPreset"
           />
-          <button type="button" class="btn primary" @click="saveCurrentPreset">
+          <button type="button" class="link preset-save-link" @click="saveCurrentPreset">
             保存当前
           </button>
         </div>
@@ -401,18 +400,26 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
         <p v-else class="empty-hint">暂无预设</p>
       </section>
 
-      <section class="block">
-        <div class="section-head">
+      <section class="block block-export">
+        <div class="export-row">
           <h2 class="h">导出</h2>
           <ParamHint
-            text="JSON 包含当前有效画布宽度、画布宽度模型与全部图表参数，便于交给开发复现。"
+            text="JSON 仅包含图表配置参数（类目数、柱宽策略、grid、barGap 等），不含画布宽度、画布高度等演示用字段。「导出 PNG」为当前预览图表区域白底位图，尺寸与预览一致。"
           />
+          <div class="export-actions">
+            <button type="button" class="link export-action" @click="copyExport">
+              复制 JSON
+            </button>
+            <button type="button" class="link export-action" @click="exportPng">
+              导出 PNG
+            </button>
+            <ParamHint text="PNG 使用白底，内容与当前图表预览一致（不含右侧参数面板）。" />
+          </div>
+          <span v-if="copyStatus === 'ok'" class="export-feedback export-ok">已复制。</span>
+          <span v-else-if="copyStatus === 'err'" class="export-feedback export-err">复制失败，请手动全选下方文本或检查剪贴板权限。</span>
+          <span v-if="pngStatus === 'ok'" class="export-feedback export-ok">已下载 PNG。</span>
+          <span v-if="pngStatus === 'err'" class="export-feedback export-err">导出失败，请确认图表已显示。</span>
         </div>
-        <button type="button" class="btn primary" @click="copyExport">
-          复制 JSON 到剪贴板
-        </button>
-        <p v-if="copyStatus === 'ok'" class="ok">已复制。</p>
-        <p v-else-if="copyStatus === 'err'" class="err">复制失败，请手动全选下方文本。</p>
         <textarea class="export" readonly rows="8" :value="exportText" />
       </section>
     </div>
@@ -488,18 +495,6 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   border-bottom: none;
 }
 
-.grid-head-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-  margin-bottom: 0.15rem;
-}
-
-.grid-head-row .accordion-head {
-  flex: 1;
-  min-width: 0;
-}
-
 .section-head {
   display: flex;
   align-items: center;
@@ -524,9 +519,17 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   color: inherit;
 }
 
+.accordion-title-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
 .accordion-head .h {
   margin: 0;
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .accordion-chev {
@@ -594,8 +597,18 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   accent-color: var(--demo-accent);
 }
 
-.row-barwidth-pct .mono {
+.row-barwidth-pct .pct-unit {
   flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--demo-muted);
+}
+
+.row-barwidth-pct input[type='number'].barwidth-pct-num {
+  flex: 0 0 3.25rem;
+  min-width: 3rem;
+  max-width: 4rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .row.check {
@@ -606,72 +619,10 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   flex: 0 0 auto;
 }
 
-.mono {
-  font-variant-numeric: tabular-nums;
-  font-size: 0.8rem;
-  color: var(--demo-muted);
-  min-width: 2.5rem;
-  text-align: right;
-}
-
 .empty-hint {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
   color: var(--demo-muted);
-}
-
-.palette-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.55rem;
-}
-
-.btn.chip {
-  padding: 0.28rem 0.55rem;
-  font-size: 0.76rem;
-}
-
-.palette-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.45rem 0.5rem;
-}
-
-.color-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  margin: 0;
-  cursor: pointer;
-}
-
-.color-index {
-  font-size: 0.65rem;
-  color: var(--demo-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.color-input {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 3.25rem;
-  height: 1.85rem;
-  padding: 0;
-  border: 1px solid var(--demo-border);
-  border-radius: 6px;
-  cursor: pointer;
-  background: var(--demo-bg);
-}
-
-.color-input::-webkit-color-swatch-wrapper {
-  padding: 3px;
-}
-
-.color-input::-webkit-color-swatch {
-  border: none;
-  border-radius: 4px;
 }
 
 .segmented {
@@ -716,8 +667,15 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
 
 .preset-add {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.5rem;
+}
+
+.preset-save-link {
+  flex: 0 0 auto;
+  font-size: 0.84rem;
+  white-space: nowrap;
 }
 
 .btn {
@@ -768,7 +726,49 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   font-size: 0.78rem;
 }
 
+.block-export {
+  padding-top: 0.15rem;
+}
+
+.export-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+}
+
+.block-export .h {
+  margin: 0;
+}
+
+.export-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-left: auto;
+}
+
+.export-action {
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.export-feedback {
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.export-ok {
+  color: #15803d;
+}
+
+.export-err {
+  color: #b91c1c;
+}
+
 .export {
+  box-sizing: border-box;
   width: 100%;
   margin-top: 0.5rem;
   padding: 0.45rem;
@@ -780,17 +780,5 @@ function applyPalettePreset(key: keyof typeof PALETTE_PRESETS) {
   background: var(--demo-bg);
   color: var(--demo-text);
   resize: vertical;
-}
-
-.ok {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
-  color: #15803d;
-}
-
-.err {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
-  color: #b91c1c;
 }
 </style>

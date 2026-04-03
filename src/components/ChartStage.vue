@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useECharts } from '@/composables/useECharts'
 import { buildChartOption } from '@/composables/useChartOption'
 import { calcBarLayoutStats } from '@/composables/calcBarLayoutStats'
 import { chartDemoState } from '@/state/chartDemoState'
+import {
+  registerChartDom,
+  unregisterChartDom,
+} from '@/chartExportRegistry'
 
 const props = defineProps<{
   effectiveWidth: number
@@ -193,6 +197,18 @@ function onPointerCancel() {
   swipeStart.value = null
   dragState.value = null
 }
+
+function getChartDomForExport(): HTMLElement | null {
+  return el.value
+}
+
+onMounted(() => {
+  registerChartDom(getChartDomForExport)
+})
+
+onBeforeUnmount(() => {
+  unregisterChartDom(getChartDomForExport)
+})
 
 useECharts(el, option)
 </script>

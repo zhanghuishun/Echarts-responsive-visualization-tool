@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts'
-import { chartDemoState } from '@/state/chartDemoState'
+import { chartDemoState, CHART_COLORS } from '@/state/chartDemoState'
 import { calcBarLayoutStats } from '@/composables/calcBarLayoutStats'
 
 /** 稳定可复现的示例数据，组索引不同则数值略有差异 */
@@ -52,9 +52,12 @@ export function buildChartOption(
 
   const series = Array.from({ length: groupCount }, (_, g) => {
     const name = `组 ${g + 1}`
+    const color = CHART_COLORS[g % CHART_COLORS.length]
     const item = {
       name,
       type: 'bar' as const,
+      // 与全局 color 轮询一致，并固定到系列上，避免 axis tooltip 色块与图例/柱体不一致。
+      itemStyle: { color },
       // 关闭默认的“出现/更新动画”，避免柱子从下往上上浮。
       animation: false,
       data: buildSeriesValues(categoryLen, g, startIndex),
@@ -69,20 +72,26 @@ export function buildChartOption(
 
   const legendNames = series.map((s) => s.name)
 
-  const palette = chartDemoState.colorPalette.filter(Boolean)
-  const colors =
-    palette.length > 0 ? [...palette] : ['#5470c6', '#91cc75', '#fac858']
-
   const option: EChartsOption = {
-    color: colors,
+    color: [...CHART_COLORS],
     // 关闭全局动画，避免 ECharts 默认逐帧渲染带来的柱子上浮感。
     animation: false,
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      // 默认按数值排序时，提示框内系列顺序会与图例/画布从左到右不一致。
+      order: 'seriesAsc',
+    },
     ...(groupCount > 1
       ? {
           legend: {
             data: legendNames,
             top: 4,
+            icon: 'roundRect',
+            itemWidth: 10,
+            itemHeight: 10,
+            itemStyle: {
+              borderRadius: 1,
+            },
           },
         }
       : {}),
