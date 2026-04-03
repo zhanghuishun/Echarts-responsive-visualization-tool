@@ -42,7 +42,7 @@ const layoutStats = computed(() =>
 <template>
   <div class="device">
     <header class="device-toolbar">
-      <h1 class="title">ECharts 柱形图可视化调节工具</h1>
+      <h1 class="title">响应式图表调参工具</h1>
       <div class="toolbar-row toolbar-row-canvas-w">
         <label class="field field-canvas-dim">
           <span class="label label-canvas-dim">
