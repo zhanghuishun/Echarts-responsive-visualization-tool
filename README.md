@@ -14,5 +14,4 @@ npm run dev
 构建：`npm run build`，预览：`npm run preview`。
 
 ## 截图预览
-**<img width="1435" height="749" alt="image" src="https://github.com/user-attachments/assets/805fde27-668a-405a-8899-5057dbc8b10b" />
-**
+<img width="1435" height="749" alt="image" src="https://github.com/user-attachments/assets/805fde27-668a-405a-8899-5057dbc8b10b" />
