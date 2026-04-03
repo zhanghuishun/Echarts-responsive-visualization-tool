@@ -36,6 +36,13 @@ function clampBarWidthPercent() {
   chartDemoState.barWidthPercent = Math.min(100, Math.max(5, Math.round(n)))
 }
 
+/** 随机一批柱高；种子非 0，与默认确定性序列区分 */
+function randomizeData() {
+  let s = (Math.random() * 0x7fffffff) | 0
+  if (s === 0) s = 1
+  chartDemoState.dataSeed = s
+}
+
 const gridHintText = computed(
   () =>
     `默认边距为 left ${DEFAULT_GRID.gridLeft}、right ${DEFAULT_GRID.gridRight}、top ${DEFAULT_GRID.gridTop}、bottom ${DEFAULT_GRID.gridBottom}。展开可自定义，收起后恢复默认。`,
@@ -64,6 +71,7 @@ function getChartParamsForExport(): Pick<
   ChartDemoState,
   | 'categoryCount'
   | 'groupCount'
+  | 'dataSeed'
   | 'smallScreenStrategy'
   | 'barWidthMode'
   | 'barWidthPixel'
@@ -82,6 +90,7 @@ function getChartParamsForExport(): Pick<
   return {
     categoryCount: s.categoryCount,
     groupCount: s.groupCount,
+    dataSeed: s.dataSeed,
     smallScreenStrategy: s.smallScreenStrategy,
     barWidthMode: s.barWidthMode,
     barWidthPixel: s.barWidthPixel,
@@ -105,6 +114,9 @@ function applyPreset(p: PresetRecord) {
   }
   delete raw.colorPalette
   delete raw.barCategoryGap
+  if (typeof raw.dataSeed !== 'number' || Number.isNaN(raw.dataSeed)) {
+    raw.dataSeed = 0
+  }
   Object.assign(chartDemoState, raw as ChartDemoState)
 }
 
@@ -208,6 +220,17 @@ function exportPng() {
             max="8"
           />
         </label>
+        <div class="row row-data-random">
+          <span class="row-label">
+            数值序列
+            <ParamHint
+              text="默认使用固定演示数据。点击「随机数值」为当前类目与组数重新生成一批柱高（约 12～95），每次不同；种子会随预设与 JSON 导出保存，便于复现。"
+            />
+          </span>
+          <button type="button" class="link export-action" @click="randomizeData">
+            随机数值
+          </button>
+        </div>
       </section>
 
       <section class="block">
@@ -242,29 +265,31 @@ function exportPng() {
             max="120"
           />
         </label>
-        <label v-else class="row row-barwidth-pct">
-          <span class="row-label">barWidth (%)</span>
-          <input
-            v-model.number="chartDemoState.barWidthPercent"
-            class="range-input"
-            type="range"
-            min="5"
-            max="100"
-            step="1"
-            @change="clampBarWidthPercent"
-          />
-          <input
-            v-model.number="chartDemoState.barWidthPercent"
-            class="barwidth-pct-num"
-            type="number"
-            min="5"
-            max="100"
-            step="1"
-            @change="clampBarWidthPercent"
-            @blur="clampBarWidthPercent"
-          />
-          <span class="pct-unit">%</span>
-        </label>
+        <div v-else class="barwidth-pct-block">
+          <div class="barwidth-pct-grid">
+            <span class="row-label barwidth-pct-grid-label">barWidth (%)</span>
+            <input
+              v-model.number="chartDemoState.barWidthPercent"
+              class="range-input barwidth-range-full"
+              type="range"
+              min="5"
+              max="100"
+              step="1"
+              @change="clampBarWidthPercent"
+            />
+            <input
+              v-model.number="chartDemoState.barWidthPercent"
+              class="barwidth-pct-num"
+              type="number"
+              min="5"
+              max="100"
+              step="1"
+              @change="clampBarWidthPercent"
+              @blur="clampBarWidthPercent"
+            />
+            <span class="pct-unit">%</span>
+          </div>
+        </div>
         <label class="row check">
           <input v-model="chartDemoState.useBarMaxWidth" type="checkbox" />
           <span class="row-label">barMaxWidth</span>
@@ -404,7 +429,7 @@ function exportPng() {
         <div class="export-row">
           <h2 class="h">导出</h2>
           <ParamHint
-            text="JSON 仅包含图表配置参数（类目数、柱宽策略、grid、barGap 等），不含画布宽度、画布高度等演示用字段。「导出 PNG」为当前预览图表区域白底位图，尺寸与预览一致。"
+            text="JSON 仅包含图表配置参数（类目数、柱宽策略、dataSeed、grid、barGap 等），不含画布宽度、画布高度等演示用字段。「导出 PNG」为当前预览图表区域白底位图，尺寸与预览一致。"
           />
           <div class="export-actions">
             <button type="button" class="link export-action" @click="copyExport">
@@ -413,7 +438,6 @@ function exportPng() {
             <button type="button" class="link export-action" @click="exportPng">
               导出 PNG
             </button>
-            <ParamHint text="PNG 使用白底，内容与当前图表预览一致（不含右侧参数面板）。" />
           </div>
           <span v-if="copyStatus === 'ok'" class="export-feedback export-ok">已复制。</span>
           <span v-else-if="copyStatus === 'err'" class="export-feedback export-err">复制失败，请手动全选下方文本或检查剪贴板权限。</span>
@@ -438,8 +462,14 @@ function exportPng() {
   flex-direction: column;
   min-width: 0;
   border-left: 1px solid var(--demo-border);
-  background: var(--demo-surface);
-  box-shadow: -8px 0 24px rgba(15, 23, 42, 0.06);
+  background: linear-gradient(
+    165deg,
+    var(--demo-surface) 0%,
+    color-mix(in oklab, var(--demo-bg-elevated) 55%, var(--demo-surface)) 100%
+  );
+  box-shadow:
+    inset 1px 0 0 color-mix(in oklab, var(--demo-accent) 18%, transparent),
+    -12px 0 48px -16px oklch(0.4 0.04 265 / 0.09);
 }
 
 .panel.collapsed {
@@ -453,17 +483,18 @@ function exportPng() {
   justify-content: center;
   gap: 0.35rem;
   width: 100%;
-  padding: 0.65rem 0.5rem;
+  padding: 0.7rem 0.5rem;
   border: none;
   border-bottom: 1px solid var(--demo-border);
-  background: var(--demo-surface-2);
+  background: color-mix(in oklab, var(--demo-surface-2) 88%, var(--demo-bg-elevated));
   color: var(--demo-text);
   cursor: pointer;
   font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .collapse-btn:hover {
-  background: color-mix(in oklab, var(--demo-accent) 12%, var(--demo-surface-2));
+  background: color-mix(in oklab, var(--demo-accent) 10%, var(--demo-surface-2));
 }
 
 .chev {
@@ -480,15 +511,17 @@ function exportPng() {
   overflow-x: hidden;
   overflow-y: auto;
   min-width: 0;
-  padding: 0.75rem 0.9rem 1.25rem;
+  padding: 0.85rem 1rem 1.35rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--demo-muted) 40%, transparent) transparent;
 }
 
 .block {
-  padding-bottom: 0.65rem;
-  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--demo-border) 92%, transparent);
 }
 
 .block:last-of-type {
@@ -544,11 +577,11 @@ function exportPng() {
 
 .h {
   margin: 0 0 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--demo-muted);
+  color: var(--demo-muted-2);
 }
 
 .row {
@@ -578,10 +611,10 @@ function exportPng() {
 .input-text {
   flex: 1;
   min-width: 0;
-  padding: 0.3rem 0.45rem;
+  padding: 0.35rem 0.5rem;
   border: 1px solid var(--demo-border);
-  border-radius: 6px;
-  background: var(--demo-bg);
+  border-radius: var(--demo-radius-sm);
+  background: var(--demo-bg-elevated);
   color: var(--demo-text);
   font-size: 0.84rem;
 }
@@ -597,18 +630,70 @@ function exportPng() {
   accent-color: var(--demo-accent);
 }
 
-.row-barwidth-pct .pct-unit {
-  flex: 0 0 auto;
+.barwidth-pct-block {
+  width: 100%;
+  margin-bottom: 0.45rem;
+}
+
+/* 第一行：标题；第二行：滑条拉满剩余宽度 + 数字 + % 紧跟滑条右侧 */
+.barwidth-pct-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto;
+  gap: 0.35rem 0.45rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.barwidth-pct-grid-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  justify-self: start;
+  width: auto;
+  max-width: 100%;
+}
+
+.barwidth-pct-grid .pct-unit {
   font-size: 0.8rem;
   color: var(--demo-muted);
 }
 
-.row-barwidth-pct input[type='number'].barwidth-pct-num {
-  flex: 0 0 3.25rem;
+.barwidth-pct-grid input[type='number'].barwidth-pct-num {
+  width: 3.35rem;
   min-width: 3rem;
   max-width: 4rem;
+  flex: none;
+  padding: 0.35rem 0.4rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
+  border: 1px solid var(--demo-border);
+  border-radius: var(--demo-radius-sm);
+  background: var(--demo-bg-elevated);
+  color: var(--demo-text);
+  font-size: 0.84rem;
+}
+
+/* 覆盖全局 .range-input 的 max-width，使滑条占满中间列 */
+.barwidth-pct-grid input[type='range'].barwidth-range-full {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 1.45rem;
+  accent-color: var(--demo-accent);
+}
+
+.barwidth-pct-grid .barwidth-pct-num {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.barwidth-pct-grid .pct-unit {
+  grid-column: 3;
+  grid-row: 2;
 }
 
 .row.check {
@@ -629,9 +714,9 @@ function exportPng() {
   display: flex;
   gap: 0;
   margin-bottom: 0.5rem;
-  border-radius: 8px;
+  border-radius: var(--demo-radius-sm);
   overflow: hidden;
-  border: 1px solid var(--demo-border);
+  border: 1px solid color-mix(in oklab, var(--demo-border) 94%, var(--demo-accent) 6%);
 }
 
 .strategy-row {
@@ -651,16 +736,17 @@ function exportPng() {
 
 .segmented button {
   flex: 1;
-  padding: 0.35rem 0.4rem;
+  padding: 0.4rem 0.45rem;
   font-size: 0.78rem;
+  font-weight: 500;
   border: none;
-  background: var(--demo-bg);
+  background: var(--demo-bg-elevated);
   color: var(--demo-muted);
   cursor: pointer;
 }
 
 .segmented button.on {
-  background: color-mix(in oklab, var(--demo-accent) 18%, var(--demo-bg));
+  background: color-mix(in oklab, var(--demo-accent) 22%, var(--demo-bg-elevated));
   color: var(--demo-text);
   font-weight: 600;
 }
@@ -691,9 +777,18 @@ function exportPng() {
 .btn.primary {
   background: var(--demo-accent);
   border-color: var(--demo-accent);
-  color: #fff;
+  color: var(--demo-on-accent);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.btn.primary:hover {
+  background: var(--demo-accent-hover);
+  border-color: var(--demo-accent-hover);
+}
+
+.row-data-random {
+  align-items: center;
 }
 
 .preset-list {
@@ -718,12 +813,21 @@ function exportPng() {
   cursor: pointer;
   color: var(--demo-accent);
   text-align: left;
+  text-underline-offset: 3px;
+}
+
+.link:hover {
+  color: var(--demo-accent-hover);
 }
 
 .link.danger {
-  color: #b91c1c;
+  color: var(--demo-danger-fg);
   flex: 0 0 auto;
   font-size: 0.78rem;
+}
+
+.link.danger:hover {
+  color: color-mix(in oklab, var(--demo-danger-fg) 85%, var(--demo-text));
 }
 
 .block-export {
@@ -760,24 +864,25 @@ function exportPng() {
 }
 
 .export-ok {
-  color: #15803d;
+  color: var(--demo-success-fg);
 }
 
 .export-err {
-  color: #b91c1c;
+  color: var(--demo-danger-fg);
 }
 
 .export {
   box-sizing: border-box;
   width: 100%;
   margin-top: 0.5rem;
-  padding: 0.45rem;
+  padding: 0.55rem 0.6rem;
   font-size: 0.72rem;
-  line-height: 1.35;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  border-radius: 8px;
+  line-height: 1.45;
+  font-family: var(--demo-font-sans);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--demo-radius-sm);
   border: 1px solid var(--demo-border);
-  background: var(--demo-bg);
+  background: var(--demo-bg-elevated);
   color: var(--demo-text);
   resize: vertical;
 }

@@ -2,19 +2,36 @@ import type { EChartsOption } from 'echarts'
 import { chartDemoState, CHART_COLORS } from '@/state/chartDemoState'
 import { calcBarLayoutStats } from '@/composables/calcBarLayoutStats'
 
-/** 稳定可复现的示例数据，组索引不同则数值略有差异 */
+function hash32(n: number): number {
+  let x = n | 0
+  x = Math.imul(x ^ (x >>> 16), 0x7feb352d)
+  x = Math.imul(x ^ (x >>> 15), 0x846ca68b)
+  return (x ^ (x >>> 16)) >>> 0
+}
+
+/**
+ * 示例数据：dataSeed===0 时为确定性演示序列；否则为 12–95 的伪随机整数（同一种子下图表不变）。
+ */
 function buildSeriesValues(
   len: number,
   groupIndex: number,
   startIndex: number,
+  dataSeed: number,
 ): number[] {
-  return Array.from(
-    { length: len },
-    (_, i) => {
-      const globalIndex = i + startIndex
-      return 20 + ((globalIndex * 17 + 13 + groupIndex * 11) % 61)
-    },
-  )
+  if (dataSeed === 0) {
+    return Array.from(
+      { length: len },
+      (_, i) => {
+        const globalIndex = i + startIndex
+        return 20 + ((globalIndex * 17 + 13 + groupIndex * 11) % 61)
+      },
+    )
+  }
+  return Array.from({ length: len }, (_, i) => {
+    const globalIndex = i + startIndex
+    const h = hash32(dataSeed + groupIndex * 0x1e35f + globalIndex * 0x9e3779b9)
+    return 12 + (h % 84)
+  })
 }
 
 export interface CategoryWindow {
@@ -60,7 +77,7 @@ export function buildChartOption(
       itemStyle: { color },
       // 关闭默认的“出现/更新动画”，避免柱子从下往上上浮。
       animation: false,
-      data: buildSeriesValues(categoryLen, g, startIndex),
+      data: buildSeriesValues(categoryLen, g, startIndex, chartDemoState.dataSeed),
       // 新算法不使用 barCategoryGap：固定为 0%，避免“类目 band 剩余宽度”口径不一致。
       barCategoryGap: '0%',
       // 这里用像素值强制控制占用宽度，保证“同一类目内所有柱子”不会超出可用区域。

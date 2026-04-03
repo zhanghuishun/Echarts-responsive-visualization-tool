@@ -37,11 +37,17 @@ const mainStyle = computed(() => {
 .app {
   min-height: 100vh;
   background: var(--demo-bg);
+  background-image: radial-gradient(
+    ellipse 120% 80% at 10% -20%,
+    color-mix(in oklab, var(--demo-accent) 8%, transparent),
+    transparent 55%
+  );
 }
 
 .main {
   box-sizing: border-box;
-  padding: 1.25rem 0 2rem 1.25rem;
+  padding: clamp(1rem, 2.5vw, 1.75rem) clamp(0.75rem, 2.5vw, 1.5rem)
+    clamp(1.5rem, 4vw, 2.5rem);
   max-width: 100%;
 }
 </style>

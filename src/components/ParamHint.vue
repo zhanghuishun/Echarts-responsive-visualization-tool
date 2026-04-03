@@ -35,10 +35,10 @@ defineProps<{
   height: 1rem;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--hint-border, var(--demo-border, #e4e4e7));
+  border: 1px solid color-mix(in oklab, var(--hint-border, var(--demo-border)) 92%, var(--demo-accent) 8%);
   border-radius: 50%;
-  background: var(--hint-bg, var(--demo-bg, #f4f4f5));
-  color: var(--hint-muted, var(--demo-muted, #71717a));
+  background: color-mix(in oklab, var(--hint-bg, var(--demo-bg-elevated)) 96%, var(--demo-accent) 4%);
+  color: var(--hint-muted, var(--demo-muted));
   font-size: 0.58rem;
   font-weight: 700;
   font-style: italic;

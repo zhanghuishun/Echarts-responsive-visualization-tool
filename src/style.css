@@ -1,38 +1,70 @@
 :root {
   color-scheme: light dark;
-  --demo-bg: #f4f4f5;
-  --demo-surface: #ffffff;
-  --demo-surface-2: #fafafa;
-  --demo-border: #e4e4e7;
-  --demo-text: #18181b;
-  --demo-muted: #71717a;
-  --demo-accent: #2563eb;
-  --demo-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
-  font-family:
-    ui-sans-serif,
+
+  /* 界面正文 Manrope；标题 Space Grotesk + Noto Sans SC（几何工具感，区别于正文） */
+  --demo-font-sans:
+    'Manrope',
+    'PingFang SC',
+    'Microsoft YaHei',
     system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    Helvetica,
-    Arial,
-    'Apple Color Emoji',
-    'Segoe UI Emoji',
     sans-serif;
-  line-height: 1.45;
-  font-size: 15px;
+
+  --demo-font-title:
+    'Space Grotesk',
+    'Noto Sans SC',
+    'PingFang SC',
+    'Microsoft YaHei',
+    sans-serif;
+
+  /* 暖纸感背景 + 略带色相的中性色，避免纯灰/纯蓝「模板感」 */
+  --demo-bg: oklch(0.965 0.012 95);
+  --demo-bg-elevated: oklch(0.978 0.01 95);
+  --demo-surface: oklch(0.995 0.006 95);
+  --demo-surface-2: oklch(0.985 0.008 95);
+  --demo-border: oklch(0.88 0.02 95);
+  --demo-text: oklch(0.26 0.028 265);
+  --demo-muted: oklch(0.48 0.022 265);
+  --demo-muted-2: oklch(0.58 0.02 265);
+
+  /* 青绿强调：数据工具感，区别于常见紫蓝渐变 */
+  --demo-accent: oklch(0.48 0.11 195);
+  --demo-accent-hover: oklch(0.42 0.12 195);
+  --demo-on-accent: oklch(0.99 0.01 95);
+
+  --demo-shadow: 0 1px 0 oklch(0.92 0.015 95),
+    0 18px 48px -12px oklch(0.55 0.04 265 / 0.12);
+  --demo-shadow-soft: 0 10px 32px -8px oklch(0.45 0.03 265 / 0.1);
+
+  --demo-success-fg: oklch(0.42 0.12 150);
+  --demo-danger-fg: oklch(0.48 0.18 25);
+
+  --demo-radius: 10px;
+  --demo-radius-sm: 8px;
+
+  font-family: var(--demo-font-sans);
+  line-height: 1.5;
+  font-size: clamp(14px, 0.875rem + 0.2vw, 16px);
+  font-feature-settings: 'tnum' 1;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --demo-bg: #09090b;
-    --demo-surface: #18181b;
-    --demo-surface-2: #27272a;
-    --demo-border: #3f3f46;
-    --demo-text: #fafafa;
-    --demo-muted: #a1a1aa;
-    --demo-accent: #60a5fa;
-    --demo-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    --demo-bg: oklch(0.17 0.024 265);
+    --demo-bg-elevated: oklch(0.2 0.024 265);
+    --demo-surface: oklch(0.22 0.022 265);
+    --demo-surface-2: oklch(0.26 0.02 265);
+    --demo-border: oklch(0.34 0.02 265);
+    --demo-text: oklch(0.96 0.012 95);
+    --demo-muted: oklch(0.68 0.02 265);
+    --demo-muted-2: oklch(0.58 0.02 265);
+    --demo-accent: oklch(0.72 0.11 195);
+    --demo-accent-hover: oklch(0.78 0.1 195);
+    --demo-on-accent: oklch(0.18 0.03 265);
+    --demo-shadow: 0 1px 0 oklch(0.32 0.02 265),
+      0 20px 50px -12px oklch(0 0 0 / 0.45);
+    --demo-shadow-soft: 0 12px 36px -10px oklch(0 0 0 / 0.4);
+    --demo-success-fg: oklch(0.72 0.12 150);
+    --demo-danger-fg: oklch(0.72 0.12 25);
   }
 }
 
@@ -50,8 +82,36 @@ body {
 body {
   background: var(--demo-bg);
   color: var(--demo-text);
+  -webkit-font-smoothing: antialiased;
 }
 
 #app {
   min-height: 100vh;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--demo-accent) 28%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where(button, input, textarea, a) {
+    transition:
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+}
+
+:where(button, input:not([type='range']), textarea, select):focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--demo-accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+:where(input[type='range']):focus-visible {
+  outline: none;
+}
+
+:where(input[type='range']):focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--demo-accent) 35%, transparent);
 }

@@ -153,17 +153,23 @@ const layoutStats = computed(() =>
 .device-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.75rem;
   width: 100%;
   max-width: 100%;
   align-items: flex-start;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--demo-border) 85%, transparent);
 }
 
 .title {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  max-width: 65ch;
+  font-family: var(--demo-font-title);
+  font-size: clamp(1.125rem, 1rem + 0.55vw, 1.5rem);
+  font-weight: 700;
+  font-kerning: normal;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
   color: var(--demo-text);
 }
 
@@ -220,10 +226,10 @@ const layoutStats = computed(() =>
 
 .input-num {
   width: 4.5rem;
-  padding: 0.25rem 0.4rem;
+  padding: 0.3rem 0.45rem;
   border: 1px solid var(--demo-border);
-  border-radius: 6px;
-  background: var(--demo-surface);
+  border-radius: var(--demo-radius-sm);
+  background: var(--demo-bg-elevated);
   color: var(--demo-text);
 }
 
@@ -265,11 +271,12 @@ const layoutStats = computed(() =>
 }
 
 .bp {
-  padding: 0.2rem 0.55rem;
-  font-size: 0.78rem;
-  border: 1px solid var(--demo-border);
-  border-radius: 6px;
-  background: var(--demo-surface-2);
+  padding: 0.28rem 0.55rem;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border: 1px solid color-mix(in oklab, var(--demo-border) 90%, var(--demo-accent) 10%);
+  border-radius: var(--demo-radius-sm);
+  background: var(--demo-bg-elevated);
   color: var(--demo-text);
   cursor: pointer;
 }
@@ -277,6 +284,7 @@ const layoutStats = computed(() =>
 .bp:hover {
   border-color: var(--demo-accent);
   color: var(--demo-accent);
+  background: color-mix(in oklab, var(--demo-accent) 8%, var(--demo-bg-elevated));
 }
 
 .layout-stats {
@@ -310,10 +318,10 @@ const layoutStats = computed(() =>
 
 .device-frame {
   box-sizing: border-box;
-  border: 1px solid var(--demo-border);
-  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--demo-border) 92%, var(--demo-accent) 8%);
+  border-radius: var(--demo-radius);
   background: var(--demo-surface);
-  box-shadow: var(--demo-shadow);
+  box-shadow: var(--demo-shadow-soft);
   overflow: hidden;
 }
 
